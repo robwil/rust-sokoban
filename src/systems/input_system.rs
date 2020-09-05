@@ -17,6 +17,7 @@ impl<'a> System<'a> for InputSystem {
     // Data
     type SystemData = (
         Write<'a, Gameplay>,
+        Write<'a, EventQueue>,
         Write<'a, InputQueue>,
         Entities<'a>,
         WriteStorage<'a, Position>,
@@ -26,7 +27,7 @@ impl<'a> System<'a> for InputSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut gameplay, mut input_queue, entities, mut positions, players, movables, immovables) =
+        let (mut gameplay, mut event_queue, mut input_queue, entities, mut positions, players, movables, immovables) =
             data;
 
         let mut to_move = Vec::new();
@@ -77,7 +78,10 @@ impl<'a> System<'a> for InputSystem {
                             // if it exists, we need to stop and not move anything
                             // if it doesn't exist, we stop because we found a gap
                             match immov.get(&pos) {
-                                Some(_) => to_move.clear(),
+                                Some(_) => {
+                                    to_move.clear();
+                                    event_queue.events.push(Event::PlayerHitObstacle{})
+                                },
                                 None => break,
                             }
                         }
@@ -102,6 +106,8 @@ impl<'a> System<'a> for InputSystem {
                     KeyCode::Right => position.x += 1,
                     _ => (),
                 }
+                // Fire an event for the entity that just moved
+                event_queue.events.push(Event::EntityMoved(EntityMoved { id }));
             }
         }
     }
