@@ -1858,7 +1858,6 @@ name = "rust-sokoban"
 version = "0.1.0"
 dependencies = [
  "ggez",
- "shred",
  "specs",
 ]
 
@@ -2016,19 +2015,7 @@ dependencies = [
  "hashbrown",
  "mopa",
  "rayon",
- "shred-derive",
  "smallvec",
-]
-
-[[package]]
-name = "shred-derive"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1f37080f2751fbf091dbdebaa95bd6cf9dbf74ad1d50396b1908518a1747fdf"
-dependencies = [
- "proc-macro2 1.0.20",
- "quote 1.0.7",
- "syn 1.0.39",
 ]
 
 [[package]]
