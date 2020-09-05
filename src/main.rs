@@ -1,3 +1,4 @@
+use specs::NullStorage;
 use ggez;
 use ggez::event::{KeyCode, KeyMods};
 use ggez::graphics;
@@ -7,12 +8,16 @@ use ggez::nalgebra as na;
 use ggez::{conf, event, Context, GameResult};
 use specs::{
     join::Join, Builder, Component, Read, ReadStorage, RunNow, System, VecStorage, World, WorldExt,
-    Write, WriteStorage,
+    Write, WriteStorage, Entities
 };
+use specs::world::Index;
 
 use std::path;
+use std::collections::HashMap;
 
 const TILE_WIDTH: f32 = 32.0;
+const MAP_WIDTH: u8 = 8;
+const MAP_HEIGHT: u8 = 9;
 
 // Components
 #[derive(Debug, Component, Clone, Copy)]
@@ -44,6 +49,14 @@ pub struct Box {}
 #[derive(Component)]
 #[storage(VecStorage)]
 pub struct BoxSpot {}
+
+#[derive(Component, Default)]
+#[storage(NullStorage)]
+pub struct Movable;
+
+#[derive(Component, Default)]
+#[storage(NullStorage)]
+pub struct Immovable;
 
 // Resources
 #[derive(Default)]
@@ -94,25 +107,85 @@ impl<'a> System<'a> for RenderingSystem<'a> {
 pub struct InputSystem {}
 
 impl<'a> System<'a> for InputSystem {
-    // Data
-    type SystemData = (
+     // Data
+     type SystemData = (
         Write<'a, InputQueue>,
+        Entities<'a>,
         WriteStorage<'a, Position>,
         ReadStorage<'a, Player>,
+        ReadStorage<'a, Movable>,
+        ReadStorage<'a, Immovable>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut input_queue, mut positions, players) = data;
+        let (mut input_queue, entities, mut positions, players, movables, immovables) = data;
 
-        for (position, _player) in (&mut positions, &players).join() {
+        let mut to_move = Vec::new();
+
+        for (position, _player) in (&positions, &players).join() {
             // Get the first key pressed
             if let Some(key) = input_queue.keys_pressed.pop() {
-                // Apply the key to the position
+                // get all the movables and immovables
+                let mut mov: HashMap<(u8, u8), Index> = (&entities, &movables, &positions)
+                    .join()
+                    .map(|t| ((t.2.x, t.2.y), t.0.id()))
+                    .collect::<HashMap<_, _>>();
+                let mut immov: HashMap<(u8, u8), Index> = (&entities, &immovables, &positions)
+                    .join()
+                    .map(|t| ((t.2.x, t.2.y), t.0.id()))
+                    .collect::<HashMap<_, _>>();
+
+                // Now iterate through current position to the end of the map
+                // on the correct axis and check what needs to move.
+                let (start, end, is_x) = match key {
+                    KeyCode::Up => (position.y, 0, false),
+                    KeyCode::Down => (position.y, MAP_HEIGHT, false),
+                    KeyCode::Left => (position.x, 0, true),
+                    KeyCode::Right => (position.x, MAP_WIDTH, true),
+                    _ => continue,
+                };
+
+                let range = if start < end {
+                    (start..=end).collect::<Vec<_>>()
+                } else {
+                    (end..=start).rev().collect::<Vec<_>>()
+                };
+
+                for x_or_y in range {
+                    let pos = if is_x {
+                        (x_or_y, position.y)
+                    } else {
+                        (position.x, x_or_y)
+                    };
+
+                    // find a movable
+                    // if it exists, we try to move it and continue
+                    // if it doesn't exist, we continue and try to find an immovable instead
+                    match mov.get(&pos) {
+                        Some(id) => to_move.push((key, id.clone())),
+                        None => {
+                            // find an immovable
+                            // if it exists, we need to stop and not move anything
+                            // if it doesn't exist, we stop because we found a gap
+                            match immov.get(&pos) {
+                                Some(id) => to_move.clear(),
+                                None => break,
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Now actually move what needs to be moved
+        for (key, id) in to_move {
+            let position = positions.get_mut(entities.entity(id));
+            if let Some(position) = position {
                 match key {
-                    KeyCode::Up | KeyCode::W => position.y -= 1,
-                    KeyCode::Down | KeyCode::S => position.y += 1,
-                    KeyCode::Left | KeyCode::A => position.x -= 1,
-                    KeyCode::Right | KeyCode::D => position.x += 1,
+                    KeyCode::Up => position.y -= 1,
+                    KeyCode::Down => position.y += 1,
+                    KeyCode::Left => position.x -= 1,
+                    KeyCode::Right => position.x += 1,
                     _ => (),
                 }
             }
@@ -174,6 +247,8 @@ pub fn register_components(world: &mut World) {
     world.register::<Wall>();
     world.register::<Box>();
     world.register::<BoxSpot>();
+    world.register::<Movable>();
+    world.register::<Immovable>();
 }
 
 pub fn register_resources(world: &mut World) {
@@ -189,6 +264,7 @@ pub fn create_wall(world: &mut World, position: Position) {
             path: "/images/wall.png".to_string(),
         })
         .with(Wall {})
+        .with(Immovable)
         .build();
 }
 
@@ -210,6 +286,7 @@ pub fn create_box(world: &mut World, position: Position) {
             path: "/images/box.png".to_string(),
         })
         .with(Box {})
+        .with(Movable)
         .build();
 }
 
@@ -232,6 +309,7 @@ pub fn create_player(world: &mut World, position: Position) {
             path: "/images/player.png".to_string(),
         })
         .with(Player {})
+        .with(Movable)
         .build();
 }
 
