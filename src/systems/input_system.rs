@@ -1,5 +1,6 @@
 use crate::components::*;
 use crate::constants::*;
+use crate::events::*;
 use crate::resources::*;
 use ggez::event::KeyCode;
 use specs::join::Join;
@@ -27,8 +28,16 @@ impl<'a> System<'a> for InputSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut gameplay, mut event_queue, mut input_queue, entities, mut positions, players, movables, immovables) =
-            data;
+        let (
+            mut gameplay,
+            mut event_queue,
+            mut input_queue,
+            entities,
+            mut positions,
+            players,
+            movables,
+            immovables,
+        ) = data;
 
         let mut to_move = Vec::new();
 
@@ -80,8 +89,8 @@ impl<'a> System<'a> for InputSystem {
                             match immov.get(&pos) {
                                 Some(_) => {
                                     to_move.clear();
-                                    event_queue.events.push(Event::PlayerHitObstacle{})
-                                },
+                                    event_queue.events.push(Event::PlayerHitObstacle {})
+                                }
                                 None => break,
                             }
                         }
@@ -91,7 +100,7 @@ impl<'a> System<'a> for InputSystem {
         }
 
         // We've just moved, so let's increase the number of moves
-        if to_move.len() > 0 {
+        if !to_move.is_empty() {
             gameplay.moves_count += 1;
         }
 
@@ -107,7 +116,9 @@ impl<'a> System<'a> for InputSystem {
                     _ => (),
                 }
                 // Fire an event for the entity that just moved
-                event_queue.events.push(Event::EntityMoved(EntityMoved { id }));
+                event_queue
+                    .events
+                    .push(Event::EntityMoved(EntityMoved { id }));
             }
         }
     }

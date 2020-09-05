@@ -1,12 +1,15 @@
+use crate::audio::initialize_sounds;
 use ggez::event::{KeyCode, KeyMods};
 use ggez::{conf, event, timer, Context, GameResult};
 use specs::{RunNow, World, WorldExt};
 
 use std::path;
 
+mod audio;
 mod components;
 mod constants;
 mod entities;
+mod events;
 mod map;
 mod resources;
 mod systems;
@@ -69,7 +72,7 @@ impl event::EventHandler for Game {
     ) {
         // Global key handling modifies overall game state
         match keycode {
-            KeyCode::R | KeyCode::Space => self.world = create_world(),
+            KeyCode::R | KeyCode::Space => self.world = create_world(context),
             KeyCode::Escape => event::quit(context),
             _ => {
                 // Any other keys are passed into input system to affect current game state
@@ -80,17 +83,16 @@ impl event::EventHandler for Game {
     }
 }
 
-fn create_world() -> World {
+fn create_world(context: &mut Context) -> World {
     let mut world = World::new();
     register_components(&mut world);
     register_resources(&mut world);
     initialize_level(&mut world);
+    initialize_sounds(&mut world, context);
     world
 }
 
 pub fn main() -> GameResult {
-    let world = create_world();
-
     // Create a game context and event loop
     let context_builder = ggez::ContextBuilder::new("rust_sokoban", "sokoban")
         .window_setup(conf::WindowSetup::default().title("Rust Sokoban!"))
@@ -98,6 +100,7 @@ pub fn main() -> GameResult {
         .add_resource_path(path::PathBuf::from("./resources"));
 
     let (context, event_loop) = &mut context_builder.build()?;
+    let world = create_world(context);
 
     // Create the game state
     let game = &mut Game { world };

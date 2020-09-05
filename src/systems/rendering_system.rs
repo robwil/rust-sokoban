@@ -1,8 +1,7 @@
-use crate::resources::Time;
-use std::time::Duration;
 use crate::components::*;
 use crate::constants::*;
 use crate::resources::Gameplay;
+use crate::resources::Time;
 use ggez::graphics;
 use ggez::graphics::Color;
 use ggez::graphics::DrawParam;
@@ -12,6 +11,7 @@ use ggez::timer;
 use ggez::Context;
 use specs::Read;
 use specs::{join::Join, ReadStorage, System};
+use std::time::Duration;
 
 // Systems
 pub struct RenderingSystem<'a> {

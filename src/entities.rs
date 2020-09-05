@@ -36,7 +36,10 @@ pub fn create_box_spot(world: &mut World, position: Position, colour: BoxColour)
     world
         .create_entity()
         .with(Position { z: 9, ..position })
-        .with(Renderable::new_static(format!("/images/box_spot_{}.png", colour)))
+        .with(Renderable::new_static(format!(
+            "/images/box_spot_{}.png",
+            colour
+        )))
         .with(BoxSpot { colour })
         .build();
 }

@@ -1,9 +1,6 @@
-
-use crate::{
-    // audio::AudioStore,
-    components::*,
-    resources::{BoxPlacedOnSpot, EntityMoved, Event, EventQueue},
-};
+use crate::audio::AudioStore;
+use crate::components::*;
+use crate::events::*;
 use specs::{Entities, Join, ReadStorage, System, Write};
 use std::collections::HashMap;
 
@@ -13,7 +10,7 @@ impl<'a> System<'a> for EventSystem {
     // Data
     type SystemData = (
         Write<'a, EventQueue>,
-        // Write<'a, AudioStore>,
+        Write<'a, AudioStore>,
         Entities<'a>,
         ReadStorage<'a, Box>,
         ReadStorage<'a, BoxSpot>,
@@ -21,16 +18,14 @@ impl<'a> System<'a> for EventSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut event_queue, /*mut audio_store,*/ entities, boxes, box_spots, positions) = data;
+        let (mut event_queue, mut audio_store, entities, boxes, box_spots, positions) = data;
 
         let mut new_events = Vec::new();
 
         for event in event_queue.events.drain(..) {
-            println!("New event: {:?}", event);
-
             match event {
                 Event::PlayerHitObstacle => {
-                    // play sound here
+                    audio_store.play_sound("wall");
                 }
                 Event::EntityMoved(EntityMoved { id }) => {
                     // An entity was just moved, check if it was a box and fire
@@ -55,12 +50,12 @@ impl<'a> System<'a> for EventSystem {
                         }
                     }
                 }
-                Event::BoxPlacedOnSpot(BoxPlacedOnSpot { is_correct_spot }) => {
-                    // play sound here
-                    // let sound = if is_correct_spot {
-                    //     "correct"
-                    // };
-                }
+                Event::BoxPlacedOnSpot(BoxPlacedOnSpot { is_correct_spot }) => audio_store
+                    .play_sound(if is_correct_spot {
+                        "correct"
+                    } else {
+                        "incorrect"
+                    }),
             }
         }
 
