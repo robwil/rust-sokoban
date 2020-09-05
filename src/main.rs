@@ -16,17 +16,11 @@ use crate::map::*;
 use crate::resources::*;
 use crate::systems::*;
 
-// This struct will hold all our game state
-// For now there is nothing to be held, but we'll add
-// things shortly.
 struct Game {
     world: World,
 }
 
-// This is the main event loop. ggez tells us to implement
-// two things:
-// - updating
-// - rendering
+// This is the main event loop.
 impl event::EventHandler for Game {
     fn update(&mut self, _context: &mut Context) -> GameResult {
         // Run input system
@@ -56,23 +50,34 @@ impl event::EventHandler for Game {
 
     fn key_down_event(
         &mut self,
-        _context: &mut Context,
+        context: &mut Context,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
     ) {
-        println!("Key pressed: {:?}", keycode);
-
-        let mut input_queue = self.world.write_resource::<InputQueue>();
-        input_queue.keys_pressed.push(keycode);
+        // Global key handling modifies overall game state
+        match keycode {
+            KeyCode::R | KeyCode::Space => self.world = create_world(),
+            KeyCode::Escape => event::quit(context),
+            _ => {
+                // Any other keys are passed into input system to affect current game state
+                let mut input_queue = self.world.write_resource::<InputQueue>();
+                input_queue.keys_pressed.push(keycode);
+            }
+        }
     }
 }
 
-pub fn main() -> GameResult {
+fn create_world() -> World {
     let mut world = World::new();
     register_components(&mut world);
     register_resources(&mut world);
     initialize_level(&mut world);
+    world
+}
+
+pub fn main() -> GameResult {
+    let world = create_world();
 
     // Create a game context and event loop
     let context_builder = ggez::ContextBuilder::new("rust_sokoban", "sokoban")
