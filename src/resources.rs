@@ -1,11 +1,11 @@
-use std::fmt;
-use std::fmt::Display;
 use ggez::event::KeyCode;
 use specs::World;
+use std::fmt;
+use std::fmt::Display;
 
 pub enum GameplayState {
     Playing,
-    Won
+    Won,
 }
 
 impl Default for GameplayState {
@@ -18,7 +18,7 @@ impl Display for GameplayState {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(match self {
             GameplayState::Playing => "Playing",
-            GameplayState::Won => "Won"
+            GameplayState::Won => "Won",
         })?;
         Ok(())
     }
@@ -27,7 +27,7 @@ impl Display for GameplayState {
 #[derive(Default)]
 pub struct Gameplay {
     pub state: GameplayState,
-    pub moves_count: u32
+    pub moves_count: u32,
 }
 
 #[derive(Default)]

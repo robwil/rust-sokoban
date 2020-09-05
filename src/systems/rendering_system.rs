@@ -1,14 +1,14 @@
-use crate::resources::Gameplay;
-use specs::Read;
 use crate::components::*;
 use crate::constants::*;
+use crate::resources::Gameplay;
 use ggez::graphics;
+use ggez::graphics::Color;
 use ggez::graphics::DrawParam;
 use ggez::graphics::Image;
-use ggez::graphics::Color;
 use ggez::nalgebra as na;
 use ggez::timer;
 use ggez::Context;
+use specs::Read;
 use specs::{join::Join, ReadStorage, System};
 
 // Systems
@@ -19,7 +19,11 @@ pub struct RenderingSystem<'a> {
 // System implementation
 impl<'a> System<'a> for RenderingSystem<'a> {
     // Data
-    type SystemData = (Read<'a, Gameplay>, ReadStorage<'a, Position>, ReadStorage<'a, Renderable>);
+    type SystemData = (
+        Read<'a, Gameplay>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Renderable>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
         let (gameplay, positions, renderables) = data;

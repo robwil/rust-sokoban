@@ -26,7 +26,8 @@ impl<'a> System<'a> for InputSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut gameplay, mut input_queue, entities, mut positions, players, movables, immovables) = data;
+        let (mut gameplay, mut input_queue, entities, mut positions, players, movables, immovables) =
+            data;
 
         let mut to_move = Vec::new();
 
