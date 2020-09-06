@@ -3,14 +3,17 @@ use crate::constants::*;
 use crate::resources::Gameplay;
 use crate::resources::Time;
 use ggez::graphics;
+use ggez::graphics::spritebatch::SpriteBatch;
 use ggez::graphics::Color;
 use ggez::graphics::DrawParam;
 use ggez::graphics::Image;
 use ggez::nalgebra as na;
 use ggez::timer;
 use ggez::Context;
+use itertools::Itertools;
 use specs::Read;
 use specs::{join::Join, ReadStorage, System};
+use std::collections::HashMap;
 use std::time::Duration;
 
 // Systems
@@ -34,22 +37,46 @@ impl<'a> System<'a> for RenderingSystem<'a> {
         // Clearing the screen (this gives us the backround colour)
         graphics::clear(self.context, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
 
-        // Get all the renderables with their positions and sort by the position z
-        // This will allow us to have entities layered visually.
-        let mut rendering_data = (&positions, &renderables).join().collect::<Vec<_>>();
-        rendering_data.sort_by_key(|&k| k.0.z);
+        // Get all the renderables with their positions.
+        let rendering_data = (&positions, &renderables).join().collect::<Vec<_>>();
+        let mut rendering_batches: HashMap<u8, HashMap<String, Vec<DrawParam>>> = HashMap::new();
 
         // Iterate through all pairs of positions & renderables, load the image
         // and draw it at the specified position.
         for (position, renderable) in rendering_data.iter() {
             // Load the image
-            let image = self.get_image(renderable, time.delta);
+            let image_path = self.get_image(renderable, time.delta);
+
             let x = position.x as f32 * TILE_WIDTH;
             let y = position.y as f32 * TILE_WIDTH;
+            let z = position.z;
 
-            // draw
+            // calculate draw params and add to rendering batch (keyed by z-index and image path)
             let draw_params = DrawParam::new().dest(na::Point2::new(x, y));
-            graphics::draw(self.context, &image, draw_params).expect("expected render");
+            rendering_batches
+                .entry(z)
+                .or_default()
+                .entry(image_path)
+                .or_default()
+                .push(draw_params);
+        }
+
+        // Iterate spritebatches ordered by z and actually render each of them
+        for (_z, group) in rendering_batches
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
+        {
+            for (image_path, draw_params) in group {
+                let image = Image::new(self.context, image_path).expect("expected image");
+                let mut sprite_batch = SpriteBatch::new(image);
+
+                for draw_param in draw_params.iter() {
+                    sprite_batch.add(*draw_param);
+                }
+
+                graphics::draw(self.context, &sprite_batch, graphics::DrawParam::new())
+                    .expect("expected render");
+            }
         }
 
         // Render any text
@@ -81,7 +108,7 @@ impl RenderingSystem<'_> {
         .expect("expected drawing queued text");
     }
 
-    pub fn get_image(&mut self, renderable: &Renderable, delta: Duration) -> Image {
+    pub fn get_image(&mut self, renderable: &Renderable, delta: Duration) -> String {
         let path_index = match renderable.kind() {
             RenderableKind::Static => {
                 // We only have one image, so we just return that
@@ -97,8 +124,6 @@ impl RenderingSystem<'_> {
             }
         };
 
-        let image_path = renderable.path(path_index);
-
-        Image::new(self.context, image_path).expect("expected image")
+        renderable.path(path_index)
     }
 }
